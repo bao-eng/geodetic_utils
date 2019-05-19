@@ -7,6 +7,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
+#include "/home/toor/catkin_ws/devel/include/ublox_msgs/NavRELPOSNED.h"
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/PointStamped.h>
@@ -19,8 +20,10 @@ bool g_publish_pose;
 
 geodetic_converter::GeodeticConverter g_geodetic_converter;
 sensor_msgs::Imu g_latest_imu_msg;
+ublox_msgs::NavRELPOSNED g_latest_relposned_msg;
 std_msgs::Float64 g_latest_altitude_msg;
 bool g_got_imu;
+bool g_got_relposned;
 bool g_got_altitude;
 
 ros::Publisher g_gps_pose_pub;
@@ -45,6 +48,12 @@ void imu_callback(const sensor_msgs::ImuConstPtr& msg)
   g_got_imu = true;
 }
 
+void relposned_callback(const ublox_msgs::NavRELPOSNEDConstPtr& msg)
+{
+  g_latest_relposned_msg = *msg;
+  g_got_relposned = true;
+}
+
 void altitude_callback(const std_msgs::Float64ConstPtr& msg)
 {
   // Only the z value in the PointStamped message is used
@@ -54,8 +63,13 @@ void altitude_callback(const std_msgs::Float64ConstPtr& msg)
 
 void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg)
 {
-  if (!g_got_imu) {
+  /*if (!g_got_imu) {
     ROS_WARN_STREAM_THROTTLE(1, "No IMU data yet");
+    return;
+  }*/
+
+  if (!g_got_relposned) {
+    ROS_WARN_STREAM_THROTTLE(1, "No RELPOSNED data yet");
     return;
   }
 
@@ -88,7 +102,11 @@ void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg)
   pose_msg->pose.pose.position.x = x;
   pose_msg->pose.pose.position.y = y;
   pose_msg->pose.pose.position.z = z;
-  pose_msg->pose.pose.orientation = g_latest_imu_msg.orientation;
+  //pose_msg->pose.pose.orientation = g_latest_imu_msg.orientation;
+  pose_msg->pose.pose.orientation.x = 0;
+  pose_msg->pose.pose.orientation.y = 0;
+  pose_msg->pose.pose.orientation.z = (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0;
+  ROS_WARN_STREAM_THROTTLE(1, "DATA converted");
 
   // Fill up position message
   geometry_msgs::PointStampedPtr position_msg(
@@ -205,7 +223,7 @@ int main(int argc, char **argv) {
                                  g_tf_child_frame_id, "gps_receiver");
 
   // Specify whether to publish pose or not
-  ros::param::param("~publish_pose", g_publish_pose, false);
+  ros::param::param("~publish_pose", g_publish_pose, true);
 
   // Wait until GPS reference parameters are initialized.
   double latitude, longitude, altitude;
@@ -238,10 +256,10 @@ int main(int argc, char **argv) {
       nh.advertise<geometry_msgs::PointStamped>("gps_position", 1);
 
   // Subscribe to IMU and GPS fixes, and convert in GPS callback
-  ros::Subscriber imu_sub = nh.subscribe("imu", 1, &imu_callback);
+  //ros::Subscriber imu_sub = nh.subscribe("imu", 1, &imu_callback);
+  ros::Subscriber relpos_sub = nh.subscribe("/ublox_gps/navrelposned", 1, &relposned_callback);
   ros::Subscriber gps_sub = nh.subscribe("gps", 1, &gps_callback);
-  ros::Subscriber altitude_sub =
-     nh.subscribe("external_altitude", 1, &altitude_callback);
+  ros::Subscriber altitude_sub = nh.subscribe("external_altitude", 1, &altitude_callback);
 
   ros::spin();
 }
