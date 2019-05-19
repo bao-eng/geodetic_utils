@@ -1,5 +1,9 @@
 # geodetic_utils
 
+## Installation
+Install catkin-simple package:
+https://github.com/ethz-asl/programming_guidelines/wiki/Catkin-Simple
+
 ## Description
 Simple library for converting coordinates to/from several geodetic frames and managing incoming GPS information.
 
