@@ -10,4 +10,16 @@
       <param name="is_sim" value="false" />
       <rosparam file="$(find geodetic_utils)/parameters/gps_pose_covariance.yaml"/>
     </node>
+
+    <!--node pkg="tf2_ros" type="static_transform_publisher" name="static_tf_fake" args="0 0 0 0 0 0 world base_link" /-->
+    <!--node pkg="rviz" type="rviz" name="rviz" args="-d $(find rviz_satellite)/launch/demo.rviz"/-->
+    <!--param name="robot_description" textfile="$(find robot_state_publisher)/test/one_link.urdf" /-->
+    <!--node pkg="robot_state_publisher" name="one_link_state_pub" type="robot_state_publisher"/-->
+    
+    <!--node name="robot_pose_publisher" pkg="robot_pose_publisher" type="robot_pose_publisher">
+      <remap from="robot_pose" to="/gps_pose"/>
+    </node-->
+    <!--node name="turtle1_tf_broadcaster" pkg="turtle_tf" type="test_tf_broadcaster.py" respawn="false" output="screen" >
+      <param name="turtle" type="string" value="turtle1" />
+    </node-->
 </launch>

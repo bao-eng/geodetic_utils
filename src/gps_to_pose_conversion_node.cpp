@@ -106,8 +106,7 @@ void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg)
   pose_msg->pose.pose.orientation.x = 0;
   pose_msg->pose.pose.orientation.y = 0;
   pose_msg->pose.pose.orientation.z = (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0;
-  ROS_WARN_STREAM_THROTTLE(1, "DATA converted");
-
+  ROS_INFO("DATA converted");
   // Fill up position message
   geometry_msgs::PointStampedPtr position_msg(
     new geometry_msgs::PointStamped);
@@ -163,7 +162,12 @@ void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg)
   transform_msg->transform.translation.x = x;
   transform_msg->transform.translation.y = y;
   transform_msg->transform.translation.z = z;
-  transform_msg->transform.rotation = g_latest_imu_msg.orientation;
+  //transform_msg->transform.rotation = g_latest_imu_msg.orientation;
+  transform_msg->transform.rotation.x = 0;
+  transform_msg->transform.rotation.y = 0;
+  transform_msg->transform.rotation.z = (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0;
+  transform_msg->transform.rotation.w = 1;
+
 
   if (g_got_altitude) {
     transform_msg->transform.translation.z = g_latest_altitude_msg.data;
@@ -174,10 +178,10 @@ void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg)
   // Fill up TF broadcaster
   tf::Transform transform;
   transform.setOrigin(tf::Vector3(x, y, z));
-  transform.setRotation(tf::Quaternion(g_latest_imu_msg.orientation.x,
-                                       g_latest_imu_msg.orientation.y,
-                                       g_latest_imu_msg.orientation.z,
-                                       g_latest_imu_msg.orientation.w));
+  transform.setRotation(tf::Quaternion(0,
+                                       0,
+                                       (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0,
+                                       1));
   p_tf_broadcaster->sendTransform(tf::StampedTransform(transform,
                                                        ros::Time::now(),
                                                        g_frame_id,
