@@ -165,7 +165,7 @@ void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg)
   //transform_msg->transform.rotation = g_latest_imu_msg.orientation;
   transform_msg->transform.rotation.x = 0;
   transform_msg->transform.rotation.y = 0;
-  transform_msg->transform.rotation.z = (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0;
+  transform_msg->transform.rotation.z = -(g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0;
   transform_msg->transform.rotation.w = 1;
 
 
@@ -177,11 +177,15 @@ void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg)
 
   // Fill up TF broadcaster
   tf::Transform transform;
+  tf::Quaternion quaternion;
   transform.setOrigin(tf::Vector3(x, y, z));
-  transform.setRotation(tf::Quaternion(0,
-                                       0,
-                                       (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0,
-                                       1));
+  //transform.setRotation(tf::Quaternion(0,
+  //                                     0,
+  //                                     (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0,
+  //                                     1));
+  quaternion.setRPY(0, 0, -(g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0);
+  quaternion.normalize();
+  transform.setRotation(quaternion);
   p_tf_broadcaster->sendTransform(tf::StampedTransform(transform,
                                                        ros::Time::now(),
                                                        g_frame_id,
