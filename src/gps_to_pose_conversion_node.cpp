@@ -14,6 +14,7 @@
 #include <geodetic_utils/geodetic_conv.hpp>
 #include <std_msgs/Float64.h>
 #include <tf/transform_broadcaster.h>
+#include <nav_msgs/Odometry.h>
 
 bool g_is_sim;
 bool g_publish_pose;
@@ -29,6 +30,7 @@ bool g_got_altitude;
 ros::Publisher g_gps_pose_pub;
 ros::Publisher g_gps_transform_pub;
 ros::Publisher g_gps_position_pub;
+ros::Publisher odom_pub;
 
 bool g_trust_gps;
 double g_covariance_position_x;
@@ -175,21 +177,68 @@ void gps_callback(const sensor_msgs::NavSatFixConstPtr& msg)
 
   g_gps_transform_pub.publish(transform_msg);
 
+  nav_msgs::Odometry odom;
+
+
+  odom.header.frame_id = g_frame_id;
+                                                       
+  odom.child_frame_id = g_tf_child_frame_id;
+
+  odom.pose.pose.position.x = x;
+  odom.pose.pose.position.y = y;
+  odom.pose.pose.position.z = 0;
+
+  geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw((M_PI/2)-(g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0);
+  odom.pose.pose.orientation = odom_quat;
+  
+  
+  // Use ENU covariance to build XYZRPY covariance
+  // boost::array<double, 36> covariance = {{
+  //   fix->position_covariance[0],
+  //   fix->position_covariance[1],
+  //   fix->position_covariance[2],
+  //   0, 0, 0,
+  //   fix->position_covariance[3],
+  //   fix->position_covariance[4],
+  //   fix->position_covariance[5],
+  //   0, 0, 0,
+  //   fix->position_covariance[6],
+  //   fix->position_covariance[7],
+  //   fix->position_covariance[8],
+  //   0, 0, 0,
+  //   0, 0, 0, rot_cov, 0, 0,
+  //   0, 0, 0, 0, rot_cov, 0,
+  //   0, 0, 0, 0, 0, rot_cov
+  // }};
+
+  odom_pub.publish(odom);
+
   // Fill up TF broadcaster
-  tf::Transform transform;
-  tf::Quaternion quaternion;
-  transform.setOrigin(tf::Vector3(x, y, z));
-  //transform.setRotation(tf::Quaternion(0,
-  //                                     0,
-  //                                     (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0,
-  //                                     1));
-  quaternion.setRPY(0, 0, -(g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0);
-  quaternion.normalize();
-  transform.setRotation(quaternion);
-  p_tf_broadcaster->sendTransform(tf::StampedTransform(transform,
-                                                       ros::Time::now(),
-                                                       g_frame_id,
-                                                       g_tf_child_frame_id));
+  // tf::Transform transform;
+  // tf::Quaternion quaternion;
+  // transform.setOrigin(tf::Vector3(x, y, z));
+  // //transform.setRotation(tf::Quaternion(0,
+  // //                                     0,
+  // //                                     (g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0,
+  // //                                     1));
+
+  // quaternion.setRPY(0, 0, -(g_latest_relposned_msg.relPosHeading/100000) * M_PI / 180.0);
+  // quaternion.normalize();
+  // transform.setRotation(quaternion);
+
+
+
+  geometry_msgs::TransformStamped odom_trans;
+  odom_trans.header.stamp = ros::Time::now();
+  odom_trans.header.frame_id = "odom";
+  odom_trans.child_frame_id = "base_link";
+
+  odom_trans.transform.translation.x = x;
+  odom_trans.transform.translation.y = y;
+  odom_trans.transform.translation.z = 0.0;
+  odom_trans.transform.rotation = odom_quat;
+
+  p_tf_broadcaster->sendTransform(odom_trans);
 }
 
 int main(int argc, char **argv) {
@@ -226,9 +275,9 @@ int main(int argc, char **argv) {
   ros::param::param("~fixed_covariance/orientation/z",
                     g_covariance_orientation_z, 0.11);
   ros::param::param<std::string>("~frame_id",
-                                 g_frame_id, "world");
+                                 g_frame_id, "odom");
   ros::param::param<std::string>("~tf_child_frame_id",
-                                 g_tf_child_frame_id, "gps_receiver");
+                                 g_tf_child_frame_id, "base_link");
 
   // Specify whether to publish pose or not
   ros::param::param("~publish_pose", g_publish_pose, true);
@@ -262,6 +311,8 @@ int main(int argc, char **argv) {
       nh.advertise<geometry_msgs::TransformStamped>("gps_transform", 1);
   g_gps_position_pub =
       nh.advertise<geometry_msgs::PointStamped>("gps_position", 1);
+  odom_pub = 
+      nh.advertise<nav_msgs::Odometry>("odom", 1);
 
   // Subscribe to IMU and GPS fixes, and convert in GPS callback
   //ros::Subscriber imu_sub = nh.subscribe("imu", 1, &imu_callback);
