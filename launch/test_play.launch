@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find geodetic_utils)/launch/gps_to_odom.launch"/>
+  <node pkg="rosbag" type="play" name="player" output="screen" args="--loop /home/toor/bagfiles/2019-06-09-22-47-55.bag"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find geodetic_utils)/launch/test.rviz"/>
+  <!--node name="rviz" pkg="rviz" type="rviz" /-->
+</launch>
